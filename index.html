@@ -15,7 +15,7 @@
             overflow-x: hidden;
         }
         .main-container {
-            max-width: 80%;
+            max-width: 90%;
             overflow: scroll;
             margin: 0 auto;
             padding: 160px 30px 30px;
@@ -272,7 +272,7 @@
         <div class="settings-bar" id="settingsBar">
             <label>参与桌数：<input type="number" id="tableCountInput" value="10" min="2" max="30" onchange="applyTableCount()"></label>
         </div>
-        <div class="round-info" id="roundInfo">第 1 / 3 轮</div>
+<!--        <div class="round-info" id="roundInfo">第 1 / 3 轮</div>-->
 
         <div class="wheels-container">
             <div class="wheel-section">
@@ -300,16 +300,16 @@
             <button id="resetBtn" onclick="resetAll()">重 置</button>
         </div>
 
-        <div class="info-panel hidden">
-            <div class="info-box">
-                <h3>参与抽奖桌号</h3>
-                <div class="table-grid" id="tableGrid"></div>
-            </div>
-            <div class="info-box hidden">
-                <h3>奖品列表及剩余数量</h3>
-                <ul class="prize-list" id="prizeList"></ul>
-            </div>
-        </div>
+<!--        <div class="info-panel hidden">-->
+<!--            <div class="info-box">-->
+<!--                <h3>参与抽奖桌号</h3>-->
+<!--                <div class="table-grid" id="tableGrid"></div>-->
+<!--            </div>-->
+<!--            <div class="info-box hidden">-->
+<!--                <h3>奖品列表及剩余数量</h3>-->
+<!--                <ul class="prize-list" id="prizeList"></ul>-->
+<!--            </div>-->
+<!--        </div>-->
     </div>
 
     <div id="confettiContainer" class="confetti-container"></div>
@@ -320,10 +320,10 @@
     //  配置区
     // ============================================================
     const prizes = [
-        { short: 'NTUC voucher $10', full: 'NTUC Voucher$10',                   sponsor: '华科校友尹希江',       qty: 10, remaining: 10 },
-        { short: '民宿体验一晚',      full: '富力公主湾精品民宿体验一晚',             sponsor: '富力地产李明亮董事长',  qty: 10, remaining: 10 },
-        { short: '歌剧院门票',        full: '富力公主湾歌剧院演出门票',              sponsor: '富力地产李明亮董事长',  qty: 10, remaining: 10 },
-        { short: '中医经络体验券',     full: 'Star-7 Beauty 中医经络舒缓疗愈体验券',   sponsor: '武大梅慧彬校友',       qty: 10, remaining: 10 },
+        { short: 'NTUC voucher $10', full: 'NTUC $$Voucher$10',                   sponsor: '华科校友尹希江',       qty: 10, remaining: 10 },
+        { short: '民宿体验一晚',      full: '富力公主湾$$精品民宿体验一晚',             sponsor: '富力地产李明亮董事长',  qty: 10, remaining: 10 },
+        { short: '歌剧院门票',        full: '富力公主湾$$歌剧院演出门票',              sponsor: '富力地产李明亮董事长',  qty: 10, remaining: 10 },
+        { short: '中医经络体验券',     full: 'Star-7 Beauty$$中医经络舒缓疗愈$$体验券',   sponsor: '武大梅慧彬校友',       qty: 10, remaining: 10 },
     ];
     let TOTAL_TABLES = 10;
     let TOTAL_ROUNDS = prizes.length; // 奖品数
@@ -362,22 +362,22 @@
     //  信息面板
     // ============================================================
     function renderTableGrid() {
-        document.getElementById('tableGrid').innerHTML = tables.map((t, i) =>
-            `<span class="table-tag${usedTableIndices.has(i) ? ' used' : ''}">${t}</span>`
-        ).join('');
+        // document.getElementById('tableGrid').innerHTML = tables.map((t, i) =>
+        //     `<span class="table-tag${usedTableIndices.has(i) ? ' used' : ''}">${t}</span>`
+        // ).join('');
     }
     function renderPrizeList() {
-        document.getElementById('prizeList').innerHTML = prizes.map(p => {
-            const exhausted = p.remaining <= 0;
-            const zeroClass = exhausted ? ' zero' : '';
-            return `<li class="prize-item${exhausted ? ' exhausted' : ''}">
-                <span class="prize-label">${p.full} <span class="prize-sponsor">(${p.sponsor})</span></span>
-                <span class="prize-qty${zeroClass}">
-                    <span class="remaining">${p.remaining}</span>
-                    <span class="total"> / ${p.qty}</span>
-                </span>
-            </li>`;
-        }).join('');
+        // document.getElementById('prizeList').innerHTML = prizes.map(p => {
+        //     const exhausted = p.remaining <= 0;
+        //     const zeroClass = exhausted ? ' zero' : '';
+        //     return `<li class="prize-item${exhausted ? ' exhausted' : ''}">
+        //         <span class="prize-label">${p.full} <span class="prize-sponsor">(${p.sponsor})</span></span>
+        //         <span class="prize-qty${zeroClass}">
+        //             <span class="remaining">${p.remaining}</span>
+        //             <span class="total"> / ${p.qty}</span>
+        //         </span>
+        //     </li>`;
+        // }).join('');
     }
     renderTableGrid();
     renderPrizeList();
@@ -474,11 +474,7 @@
 
                 // 双行显示：用 $ 分隔，或在中间截断
                 const label = this.labels[i];
-                let lines = label.includes('$') ? label.split('$') : [];
-                if (lines.length < 2) {
-                    const mid = Math.ceil(label.length / 2);
-                    lines = [label.slice(0, mid), label.slice(mid)];
-                }
+                let lines = label.includes('$') ? label.split('$') : [label];
                 const lineHeight = fontSize * 1.2;
                 lines.forEach((line, idx) => {
                     ctx.fillText(line, R * 0.62, (idx - (lines.length - 1) / 2) * lineHeight);
@@ -661,12 +657,12 @@
         el.innerHTML = `
             <div class="popup-content">
                 <h2>🎊 第 ${res.round} 轮中奖 🎊</h2>
-                <div class="big-table">${res.table}</div>
+                <div class="big-table">第 ${res.table} 桌校友</div>
                 <div class="prize-row">
-                    ${res.prize.full} × <span class="qty">${res.count}</span>
-                    <br><span class="sponsor-text">赞助：${res.prize.sponsor}</span>
+                    ${res.prize.full.replace("$$", "")} × <span class="qty">${res.count}</span>
+                    <br><span class="sponsor-text">由${res.prize.sponsor}赞助，感谢！</span>
                 </div>
-                <p style="color:#ffd700;margin-top:12px;font-size:20px;">整桌嘉宾每人一份！</p>
+                <p style="color:#ffd700;margin-top:12px;font-size:20px;">整桌嘉宾每人一份奖品！</p>
                 <button onclick="closePopup()">确 定</button>
             </div>
         `;
@@ -680,9 +676,9 @@
         card.className = 'result-card';
         card.innerHTML = `
             <h3>第 ${r.round} 轮</h3>
-            <div class="table-name">${r.table}</div>
-            <div class="prize-line">${r.prize.full} × ${r.count}</div>
-            <div class="sponsor">赞助：${r.prize.sponsor}</div>
+            <div class="table-name">第${r.table}桌校友</div>
+            <div class="prize-line">${r.prize.full.replace("$$", "")} × ${r.count}</div>
+            <div class="sponsor">由${r.prize.sponsor}赞助，感谢！</div>
         `;
         document.getElementById('results').appendChild(card);
 
