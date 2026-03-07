@@ -9,13 +9,14 @@
         body {
             font-family: 'Microsoft YaHei', 'PingFang SC', 'SimHei', sans-serif;
             background: url('background.jpg') no-repeat left top;
-            background-size: cover;
+            background-size: contain;
             min-height: 100vh;
             color: #fff;
             overflow-x: hidden;
         }
         .main-container {
-            max-width: 1800px;
+            max-width: 80%;
+            overflow: scroll;
             margin: 0 auto;
             padding: 160px 30px 30px;
         }
@@ -172,7 +173,7 @@
 
         /* 中奖记录 */
         .results {
-            max-width: 1200px; margin: 15px auto 0; padding: 0 20px;
+            max-width: 200px; margin: 15px auto 0; padding: 0 20px;
             display: flex; flex-wrap: wrap; gap: 15px; justify-content: center;
         }
         .result-card {
@@ -218,7 +219,7 @@
             background: rgba(0,0,0,0.2); border-radius: 10px;
         }
         .popup-content .prize-row .qty { color: #ffd700; font-weight: bold; font-size: 26px; }
-        .popup-content .prize-row .sponsor-text { font-size: 14px; color: rgba(255,255,255,0.6); }
+        .popup-content .prize-row .sponsor-text { font-size: 18px; color: rgba(255,255,255,0.6); }
         .popup-content button {
             margin-top: 18px; padding: 12px 40px; font-size: 20px;
             background: linear-gradient(to bottom, #ffd700, #daa520);
@@ -266,7 +267,7 @@
     <div class="main-container">
         <div class="title-section">
             <h1>幸运大转盘</h1>
-            <p class="subtitle">第一轮 · 每桌抽取一种奖品，整桌每人一份</p>
+<!--            <p class="subtitle">第一轮 · 每桌抽取一种奖品，整桌每人一份</p>-->
         </div>
         <div class="settings-bar" id="settingsBar">
             <label>参与桌数：<input type="number" id="tableCountInput" value="10" min="2" max="30" onchange="applyTableCount()"></label>
@@ -288,6 +289,10 @@
                     <canvas id="prizeWheel" width="600" height="600"></canvas>
                 </div>
             </div>
+
+            <div class="results" id="results">
+                <h2>获奖名单</h2>
+            </div>
         </div>
 
         <div class="btn-container">
@@ -295,18 +300,16 @@
             <button id="resetBtn" onclick="resetAll()">重 置</button>
         </div>
 
-        <div class="info-panel">
+        <div class="info-panel hidden">
             <div class="info-box">
                 <h3>参与抽奖桌号</h3>
                 <div class="table-grid" id="tableGrid"></div>
             </div>
-            <div class="info-box">
+            <div class="info-box hidden">
                 <h3>奖品列表及剩余数量</h3>
                 <ul class="prize-list" id="prizeList"></ul>
             </div>
         </div>
-
-        <div class="results" id="results"></div>
     </div>
 
     <div id="confettiContainer" class="confetti-container"></div>
@@ -316,18 +319,17 @@
     // ============================================================
     //  配置区
     // ============================================================
-    let TOTAL_TABLES = 10;
-    let TOTAL_ROUNDS = 3;
-    const ITEMS_PER_WIN = 10;    // 每桌中奖份数
-
-    let tables = Array.from({length: TOTAL_TABLES}, (_, i) => `${i + 1}`);
-
     const prizes = [
-        { short: 'NTUC voucher $10', full: 'NTUC voucher $10',                   sponsor: '华科校友尹希江',       qty: 10, remaining: 10 },
+        { short: 'NTUC voucher $10', full: 'NTUC Voucher$10',                   sponsor: '华科校友尹希江',       qty: 10, remaining: 10 },
         { short: '民宿体验一晚',      full: '富力公主湾精品民宿体验一晚',             sponsor: '富力地产李明亮董事长',  qty: 10, remaining: 10 },
         { short: '歌剧院门票',        full: '富力公主湾歌剧院演出门票',              sponsor: '富力地产李明亮董事长',  qty: 10, remaining: 10 },
         { short: '中医经络体验券',     full: 'Star-7 Beauty 中医经络舒缓疗愈体验券',   sponsor: '武大梅慧彬校友',       qty: 10, remaining: 10 },
     ];
+    let TOTAL_TABLES = 10;
+    let TOTAL_ROUNDS = prizes.length; // 奖品数
+    const ITEMS_PER_WIN = 10;    // 每桌中奖份数
+
+    let tables = Array.from({length: TOTAL_TABLES}, (_, i) => `${i + 1}`);
 
     let tableColors = Array.from({length: TOTAL_TABLES}, (_, i) =>
         `hsl(${Math.round(i * 360 / TOTAL_TABLES)}, 65%, 45%)`
@@ -462,14 +464,25 @@
                 ctx.save();
                 ctx.translate(cx, cy);
                 ctx.rotate(sa + seg / 2);
-                const fontSize = this.customFontSize || (n > 8 ? 56 : 80);
+                const fontSize = (this.customFontSize || (n > 8 ? 56 : 80)) * 0.75;
                 ctx.font = `bold ${fontSize}px "Microsoft YaHei","PingFang SC",sans-serif`;
                 ctx.fillStyle = used ? '#999' : '#fff';
                 ctx.textAlign = 'center';
                 ctx.textBaseline = 'middle';
                 ctx.shadowColor = 'rgba(0,0,0,0.6)';
                 ctx.shadowBlur = 4;
-                ctx.fillText(this.labels[i], R * 0.62, 0);
+
+                // 双行显示：用 $ 分隔，或在中间截断
+                const label = this.labels[i];
+                let lines = label.includes('$') ? label.split('$') : [];
+                if (lines.length < 2) {
+                    const mid = Math.ceil(label.length / 2);
+                    lines = [label.slice(0, mid), label.slice(mid)];
+                }
+                const lineHeight = fontSize * 1.2;
+                lines.forEach((line, idx) => {
+                    ctx.fillText(line, R * 0.62, (idx - (lines.length - 1) / 2) * lineHeight);
+                });
                 ctx.shadowBlur = 0;
 
                 if (used) {
@@ -485,19 +498,19 @@
             }
 
             // 中心圆
-            const centerR = R * 0.14 + 2;
+            const centerR = R * 0.14 + 4;
             const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, centerR);
             grad.addColorStop(0, '#fff');
             grad.addColorStop(1, '#e0d5c0');
             ctx.beginPath();
-            ctx.arc(cx, cy, centerR, 0, Math.PI * 2);
+            ctx.arc(cx, cy, centerR, 0, Math.PI * 3);
             ctx.fillStyle = grad;
             ctx.fill();
             ctx.strokeStyle = '#ffd700';
             ctx.lineWidth = Math.max(2, R * 0.015);
             ctx.stroke();
             ctx.fillStyle = '#8b0000';
-            const centerFontSize = Math.max(8, Math.round(centerR * 0.7));
+            const centerFontSize = Math.max(8, Math.round(centerR * 0.5));
             ctx.font = `bold ${centerFontSize}px sans-serif`;
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
@@ -542,7 +555,7 @@
     //  初始化转盘
     // ============================================================
     const tableWheel = new Wheel('tableWheel', tables, tables, tableColors);
-    const prizeWheel = new Wheel('prizeWheel', prizes, prizes.map(p => p.short), prizeColors);
+    const prizeWheel = new Wheel('prizeWheel', prizes, prizes.map(p => p.full), prizeColors);
     prizeWheel.customFontSize = 24;
     prizeWheel.draw();
 
@@ -680,7 +693,7 @@
             document.getElementById('spinBtn').textContent = '抽奖结束';
             const msg = document.createElement('div');
             msg.className = 'complete-msg';
-            msg.textContent = '🎉 第一轮幸运大转盘抽奖圆满结束！🎉';
+            msg.textContent = `🎉 第${currentRound}轮幸运大转盘抽奖圆满结束！🎉`;
             document.getElementById('results').appendChild(msg);
         }
     }
