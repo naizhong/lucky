@@ -17,7 +17,7 @@
         .main-container {
             max-width: 1800px;
             margin: 0 auto;
-            padding: 80px 30px 30px;
+            padding: 160px 30px 30px;
         }
         .title-section { text-align: center; margin-bottom: 5px; }
         .title-section h1 {
@@ -266,7 +266,7 @@
     <div class="main-container">
         <div class="title-section">
             <h1>幸运大转盘</h1>
-            <p class="subtitle">第一轮 · 转三次抽三桌 · 每桌从各种奖品各抽若干共10份</p>
+            <p class="subtitle">第一轮 · 每桌抽取一种奖品，整桌每人一份</p>
         </div>
         <div class="settings-bar" id="settingsBar">
             <label>参与桌数：<input type="number" id="tableCountInput" value="10" min="2" max="30" onchange="applyTableCount()"></label>
@@ -281,13 +281,6 @@
                     <canvas id="tableWheel" width="600" height="600"></canvas>
                 </div>
             </div>
-            <div class="wheel-section wheel-section-number">
-                <h2>数量</h2>
-                <div class="wheel-wrapper">
-                    <div class="pointer pointer-small"></div>
-                    <canvas id="numberWheel" width="220" height="220"></canvas>
-                </div>
-            </div>
             <div class="wheel-section">
                 <h2>奖品</h2>
                 <div class="wheel-wrapper">
@@ -296,8 +289,6 @@
                 </div>
             </div>
         </div>
-
-        <div class="spin-prizes" id="spinPrizes"></div>
 
         <div class="btn-container">
             <button id="spinBtn" onclick="startSpin()">开始抽奖</button>
@@ -327,12 +318,9 @@
     // ============================================================
     let TOTAL_TABLES = 10;
     let TOTAL_ROUNDS = 3;
-    const PRIZES_PER_SPIN = 3;   // 每轮抽几种奖品
-    const TOTAL_PER_TABLE = 10;  // 每桌总共获得几份
-    const MIN_PER_PRIZE = 2;     // 每种奖品最少几份
-    const MAX_PER_PRIZE = 5;     // 每种奖品最多几份
+    const ITEMS_PER_WIN = 10;    // 每桌中奖份数
 
-    let tables = Array.from({length: TOTAL_TABLES}, (_, i) => `第${i + 1}桌`);
+    let tables = Array.from({length: TOTAL_TABLES}, (_, i) => `${i + 1}`);
 
     const prizes = [
         { short: 'NTUC voucher $10', full: 'NTUC voucher $10',                   sponsor: '华科校友尹希江',       qty: 10, remaining: 10 },
@@ -345,9 +333,6 @@
         `hsl(${Math.round(i * 360 / TOTAL_TABLES)}, 65%, 45%)`
     );
     const prizeColors = ['#c0392b','#e67e22','#27ae60','#2980b9'];
-    const numberItems = [1, 2, 3, 4, 5];
-    const numberLabels = numberItems.map(String);
-    const numberColors = ['#e74c3c','#e67e22','#f1c40f','#2ecc71','#1abc9c'];
 
     // ============================================================
     //  状态
@@ -362,38 +347,11 @@
     // ============================================================
     const delay = ms => new Promise(r => setTimeout(r, ms));
 
-    /** 将 total 份奖品随机分配给 n 组，每组 min~max */
-    function distribute(total, maxArr) {
-        const n = maxArr.length;
-        for (let attempt = 0; attempt < 2000; attempt++) {
-            const result = [];
-            let rem = total;
-            let ok = true;
-            for (let i = 0; i < n - 1; i++) {
-                const lo = Math.max(MIN_PER_PRIZE, rem - maxArr.slice(i + 1).reduce((a, b) => a + b, 0));
-                const hi = Math.min(maxArr[i], rem - (n - 1 - i) * MIN_PER_PRIZE);
-                if (lo > hi) { ok = false; break; }
-                const v = lo + Math.floor(Math.random() * (hi - lo + 1));
-                result.push(v);
-                rem -= v;
-            }
-            if (ok && rem >= MIN_PER_PRIZE && rem <= maxArr[n - 1]) {
-                result.push(rem);
-                return result;
-            }
-        }
-        // 回退：平均分配
-        const base = Math.floor(total / n);
-        const result = Array(n).fill(base);
-        result[0] += total - base * n;
-        return result;
-    }
-
-    /** 从可用奖品中随机选一个（排除 excludeSet） */
-    function pickAvailablePrize(excludeSet) {
+    /** 从可用奖品中随机选一个 */
+    function pickAvailablePrize() {
         const available = prizes
             .map((p, i) => ({ idx: i, remaining: p.remaining }))
-            .filter(x => x.remaining >= MIN_PER_PRIZE && !excludeSet.has(x.idx));
+            .filter(x => x.remaining > 0);
         if (available.length === 0) return -1;
         return available[Math.floor(Math.random() * available.length)].idx;
     }
@@ -504,7 +462,7 @@
                 ctx.save();
                 ctx.translate(cx, cy);
                 ctx.rotate(sa + seg / 2);
-                const fontSize = n > 8 ? 16 : 20;
+                const fontSize = this.customFontSize || (n > 8 ? 56 : 80);
                 ctx.font = `bold ${fontSize}px "Microsoft YaHei","PingFang SC",sans-serif`;
                 ctx.fillStyle = used ? '#999' : '#fff';
                 ctx.textAlign = 'center';
@@ -585,7 +543,8 @@
     // ============================================================
     const tableWheel = new Wheel('tableWheel', tables, tables, tableColors);
     const prizeWheel = new Wheel('prizeWheel', prizes, prizes.map(p => p.short), prizeColors);
-    const numWheel = new Wheel('numberWheel', numberItems, numberLabels, numberColors);
+    prizeWheel.customFontSize = 24;
+    prizeWheel.draw();
 
     // ============================================================
     //  音效
@@ -627,82 +586,35 @@
     }
 
     // ============================================================
-    //  抽奖主逻辑：每轮抽1桌 + 3种奖品
-    //  流程：桌号转盘 → (奖品转盘 → 数量转盘) ×3
+    //  抽奖主逻辑：每轮抽1桌 + 1种奖品
+    //  流程：桌号转盘 → 奖品转盘
     // ============================================================
     async function startSpin() {
         if (spinning || currentRound >= TOTAL_ROUNDS) return;
         spinning = true;
         document.getElementById('spinBtn').disabled = true;
         document.getElementById('tableCountInput').disabled = true;
-        document.getElementById('spinPrizes').innerHTML = '';
 
-        // --- Pre-determine all results to guarantee total = TOTAL_PER_TABLE ---
+        // Pick random available table and prize
         const avT = tableWheel.available();
         const ti = avT[Math.floor(Math.random() * avT.length)];
+        const pi = pickAvailablePrize();
 
-        const excludeSet = new Set();
-        const selectedPrizes = [];
-        for (let i = 0; i < PRIZES_PER_SPIN; i++) {
-            const pi = pickAvailablePrize(excludeSet);
-            selectedPrizes.push(pi);
-            excludeSet.add(pi);
-        }
-
-        const maxArr = selectedPrizes.map(pi => Math.min(MAX_PER_PRIZE, prizes[pi].remaining));
-        const quantities = distribute(TOTAL_PER_TABLE, maxArr);
-
-        // === Step 1: Spin table wheel alone ===
-        await tableWheel.spin(ti, 4500);
+        // === Spin both wheels together ===
+        await Promise.all([
+            tableWheel.spin(ti, 4500),
+            prizeWheel.spin(pi, 5000)
+        ]);
         tableWheel.markUsed(ti);
         usedTableIndices.add(ti);
-        tickSound();
-        await delay(800);
-
-        // === Steps 2–4: For each prize, spin prize wheel FIRST, then number wheel ===
-        const savedPrizeUsed = new Set(prizeWheel.usedSet);
-        let remaining = TOTAL_PER_TABLE;
-        for (let k = 0; k < PRIZES_PER_SPIN; k++) {
-            const pi = selectedPrizes[k];
-            const q = quantities[k];
-
-            // Clear previous highlight
-            prizeWheel.highlightIdx = -1;
-            prizeWheel.draw();
-
-            // Spin prize wheel — audience sees which prize
-            await prizeWheel.spin(pi, 4000 - k * 400);
-            tickSound();
-            prizeWheel.highlightIdx = pi;
-            prizeWheel.draw();
-            await delay(500);
-
-            // Number wheel max = remaining stock of the selected prize
-            const maxQ = prizes[pi].remaining;
-            const numRange = Array.from({length: maxQ}, (_, i) => i + 1);
-            numWheel.updateItems(numRange, numRange.map(String), numberColors);
-
-            // Spin number wheel — audience sees how many
-            await numWheel.spin(q - 1, 3000 - k * 300);
-            tickSound();
-
-            remaining -= q;
-            addSpinPrizeTag(prizes[pi].short + ' ×' + q);
-            prizeWheel.markUsed(pi);
-
-            if (k < PRIZES_PER_SPIN - 1) await delay(800);
-        }
-
-        await delay(400);
-        prizeWheel.usedSet = savedPrizeUsed;
-        prizeWheel.highlightIdx = -1;
+        prizeWheel.highlightIdx = pi;
         prizeWheel.draw();
+        tickSound();
 
-        // Deduct prize remaining quantities
-        selectedPrizes.forEach((pi, k) => {
-            prizes[pi].remaining -= quantities[k];
-            if (prizes[pi].remaining <= 0) prizeWheel.markUsed(pi);
-        });
+        // Deduct
+        const count = Math.min(ITEMS_PER_WIN, prizes[pi].remaining);
+        prizes[pi].remaining -= count;
+        if (prizes[pi].remaining <= 0) prizeWheel.markUsed(pi);
 
         renderTableGrid();
         renderPrizeList();
@@ -713,10 +625,8 @@
         const res = {
             round: currentRound,
             table: tables[ti],
-            items: selectedPrizes.map((pi, k) => ({
-                prize: prizes[pi],
-                count: quantities[k]
-            }))
+            prize: prizes[pi],
+            count: count
         };
         allResults.push(res);
         showPopup(res);
@@ -728,13 +638,6 @@
         }
     }
 
-    function addSpinPrizeTag(text) {
-        const tag = document.createElement('span');
-        tag.className = 'spin-prize-tag';
-        tag.textContent = '✓ ' + text;
-        document.getElementById('spinPrizes').appendChild(tag);
-    }
-
     // ============================================================
     //  弹窗
     // ============================================================
@@ -742,18 +645,15 @@
         const el = document.getElementById('resultPopup');
         el.className = 'popup-overlay';
         el.style.display = 'flex';
-        const prizeRows = res.items.map(item =>
-            `<div class="prize-row">
-                ${item.prize.full} × <span class="qty">${item.count}</span>
-                <br><span class="sponsor-text">赞助：${item.prize.sponsor}</span>
-            </div>`
-        ).join('');
         el.innerHTML = `
             <div class="popup-content">
                 <h2>🎊 第 ${res.round} 轮中奖 🎊</h2>
                 <div class="big-table">${res.table}</div>
-                ${prizeRows}
-                <p style="color:#ffd700;margin-top:12px;font-size:20px;">共 ${TOTAL_PER_TABLE} 份，整桌嘉宾每人一份！</p>
+                <div class="prize-row">
+                    ${res.prize.full} × <span class="qty">${res.count}</span>
+                    <br><span class="sponsor-text">赞助：${res.prize.sponsor}</span>
+                </div>
+                <p style="color:#ffd700;margin-top:12px;font-size:20px;">整桌嘉宾每人一份！</p>
                 <button onclick="closePopup()">确 定</button>
             </div>
         `;
@@ -761,19 +661,15 @@
 
     function closePopup() {
         document.getElementById('resultPopup').style.display = 'none';
-        document.getElementById('spinPrizes').innerHTML = '';
 
         const r = allResults[allResults.length - 1];
         const card = document.createElement('div');
         card.className = 'result-card';
-        const lines = r.items.map(item =>
-            `<div class="prize-line">${item.prize.full} × ${item.count}</div>
-             <div class="sponsor">赞助：${item.prize.sponsor}</div>`
-        ).join('');
         card.innerHTML = `
             <h3>第 ${r.round} 轮</h3>
             <div class="table-name">${r.table}</div>
-            ${lines}
+            <div class="prize-line">${r.prize.full} × ${r.count}</div>
+            <div class="sponsor">赞助：${r.prize.sponsor}</div>
         `;
         document.getElementById('results').appendChild(card);
 
@@ -799,7 +695,7 @@
         if (isNaN(n) || n < 2) { input.value = TOTAL_TABLES; return; }
         TOTAL_TABLES = n;
         if (TOTAL_ROUNDS > TOTAL_TABLES) TOTAL_ROUNDS = TOTAL_TABLES;
-        tables = Array.from({length: TOTAL_TABLES}, (_, i) => `第${i + 1}桌`);
+        tables = Array.from({length: TOTAL_TABLES}, (_, i) => `${i + 1}`);
         tableColors = Array.from({length: TOTAL_TABLES}, (_, i) =>
             `hsl(${Math.round(i * 360 / TOTAL_TABLES)}, 65%, 45%)`
         );
@@ -817,14 +713,12 @@
         prizes.forEach(p => { p.remaining = p.qty; });
         tableWheel.usedSet.clear(); tableWheel.angle = 0; tableWheel.highlightIdx = -1; tableWheel.draw();
         prizeWheel.usedSet.clear(); prizeWheel.angle = 0; prizeWheel.highlightIdx = -1; prizeWheel.draw();
-        numWheel.updateItems(numberItems, numberLabels, numberColors);
         document.getElementById('roundInfo').textContent = `第 1 / ${TOTAL_ROUNDS} 轮`;
         document.getElementById('spinBtn').textContent = '开始抽奖';
         document.getElementById('spinBtn').disabled = false;
         document.getElementById('tableCountInput').disabled = false;
         document.getElementById('tableCountInput').value = TOTAL_TABLES;
         document.getElementById('results').innerHTML = '';
-        document.getElementById('spinPrizes').innerHTML = '';
         renderTableGrid();
         renderPrizeList();
     }
