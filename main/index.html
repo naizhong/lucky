@@ -211,6 +211,10 @@
 
       <button class="btn-draw" id="drawBtn" onclick="startDraw()">🎰 开始抽奖</button>
     </div>
+    <div class="panel" id="winnersPanel" style="display:none;margin-top:20px">
+      <h3>中奖名单</h3>
+      <div id="winnersList"></div>
+    </div>
 
     <div>
       <div class="panel">
@@ -224,11 +228,6 @@
           <button class="btn-small" onclick="clearNames()">清空</button>
           <button class="btn-small" onclick="clearWinners()">重置中奖</button>
         </div>
-      </div>
-
-      <div class="panel" id="winnersPanel" style="display:none;margin-top:20px">
-        <h3>中奖名单</h3>
-        <div id="winnersList"></div>
       </div>
     </div>
   </div>
@@ -303,7 +302,7 @@ function animLoop() {
   else { ctx.clearRect(0, 0, canvas.width, canvas.height); animFrame = null; }
 }
 
-function shootFireworks(n = 8) {
+function shootFireworks(n = 3) {
   if (animFrame) cancelAnimationFrame(animFrame);
   for (let i = 0; i < n; i++)
     setTimeout(() => launchFirework(canvas.width * (.1 + Math.random() * .8), canvas.height * (.05 + Math.random() * .5)), i * 220);
@@ -341,7 +340,7 @@ nameInput.addEventListener('input', updateCount);
 function getNames() { return nameInput.value.split('\n').map(n=>n.trim()).filter(Boolean); }
 function updateCount() { document.getElementById('countBadge').textContent = getNames().length + ' 人'; }
 function loadSample() {
-  nameInput.value='张伟\n李娜\n王芳\n刘洋\n陈静\n杨帆\n赵磊\n黄敏\n周强\n吴雪\nAlice Tan\nBob Lim\nCindy Wong\nDavid Chen\nEmily Ng\nFrank Wu\nGrace Zhou';
+  nameInput.value='张伟\n李娜\n王芳\n刘洋\nAlice Tan\nBob Lim\nCindy Wong\nDavid Chen\nEmily Ng\nFrank Wu\nGrace Zhou';
   updateCount();
 }
 function clearNames() { nameInput.value=''; updateCount(); }
@@ -411,7 +410,7 @@ function stopDraw() {
   el.className = 'rolling-name slowing';
 
   // Deceleration
-  let steps = 14, delay = 70;
+  let steps = 3, delay = 30;
   function decel(s) {
     if (s <= 0) {
       el.textContent = drawn.join('  ·  ');
@@ -439,7 +438,7 @@ function finish(drawn) {
   document.getElementById('winnerOverlay').classList.add('show');
 
   drawn.forEach(n => logWinner(n, roundCount));
-  shootFireworks(9);
+  shootFireworks(3);
   confetti();
 
   document.getElementById('drawBtn').textContent = '🎰 再次抽奖';
